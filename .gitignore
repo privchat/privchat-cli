@@ -1,0 +1,18 @@
+privchat*
+
+.golangci*
+
+# Visual Studio Code
+.vscode/
+
+# Nix stuff
+result
+
+# direnv (devs should have this file locally)
+.direnv/
+.envrc
+
+debug/
+target/
+
+**/*.rs.bk

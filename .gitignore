@@ -1,5 +1,9 @@
 privchat*
 
+# 允许仓库内展示用图片
+!.github/privchat-cli.png
+!.github/preview.png
+
 .golangci*
 
 # Visual Studio Code

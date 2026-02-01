@@ -61,11 +61,11 @@ cargo build --release
 | 变量 | 说明 | 默认 |
 |------|------|------|
 | `PRIVCHAT_SERVER_URL` | 服务器地址 | `quic://127.0.0.1:8082` |
-| `PRIVCHAT_DATA_DIR` | 数据目录（用户 DB、KV、队列） | XDG `data_dir` 或 `./data` |
+| `PRIVCHAT_DATA_DIR` | 数据目录（用户 DB、KV、队列） | `io.privchat.privchat-cli` 对应 data_dir 或 `./data` |
 | `PRIVCHAT_ASSETS_DIR` | 含 SQL 迁移的 assets 目录 | 当前目录下 `assets` 或 `privchat-cli/assets` |
 | `PRIVCHAT_TOKEN` | 已有 Token 时可直接使用（可选） | — |
 
-持久化配置（如 `~/.config/privchat/config.toml`）计划支持，当前以命令行参数与环境变量为主。
+持久化配置使用应用 ID `io.privchat.privchat-cli` 对应目录（如 Linux 下 `~/.config/privchat-cli/config.toml`），未来 GUI 版可使用 `io.privchat.privchat` 独立目录。
 
 ---
 

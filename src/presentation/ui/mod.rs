@@ -1,6 +1,7 @@
 //! UI screens.
 
 mod app;
+mod auth_mode_screen;
 pub mod backend;
 mod chat_screen;
 mod login_screen;
@@ -9,9 +10,9 @@ pub mod splash_screen;
 pub mod utils;
 
 pub use app::{App, AppConfig};
-
+pub use auth_mode_screen::{AuthModeAction, AuthModeScreen};
 pub use backend::{Action, Backend, BackendCommand};
 pub use chat_screen::{ChatFocus, ChatKeyResult, ChatScreen, ChatScreenState};
-pub use login_screen::{LoginAction, LoginScreen};
+pub use login_screen::{LoginAction, LoginFormIntent, LoginScreen};
 pub use main_screen::MainScreen;
 pub use splash_screen::SplashScreen;

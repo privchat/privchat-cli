@@ -1,4 +1,4 @@
-//! Login screen.
+//! Login screen（用户名+密码输入框；标题由 intent 决定为「登录」或「注册」）。
 
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{
@@ -28,6 +28,13 @@ pub enum LoginFocus {
     PersistCheckbox,
 }
 
+/// 登录/注册意图（用于标题与提示文案）。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LoginFormIntent {
+    Login,
+    Register,
+}
+
 /// Login screen UI.
 pub struct LoginScreen {
     username_input: TextInput,
@@ -37,6 +44,8 @@ pub struct LoginScreen {
     error_message: Option<String>,
     persist_token: bool,
     theme: Theme,
+    /// 当前表单是「登录」还是「注册」。
+    intent: LoginFormIntent,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -67,12 +76,19 @@ impl LoginScreen {
             error_message: None,
             persist_token: true,
             theme: Theme::default(),
+            intent: LoginFormIntent::Login,
         }
     }
 
     #[must_use]
     pub fn with_theme(mut self, theme: Theme) -> Self {
         self.theme = theme;
+        self
+    }
+
+    #[must_use]
+    pub fn with_intent(mut self, intent: LoginFormIntent) -> Self {
+        self.intent = intent;
         self
     }
 
@@ -262,10 +278,14 @@ impl LoginScreen {
 
         Clear.render(content_area, buf);
 
+        let title_text = match self.intent {
+            LoginFormIntent::Login => " Privchat 登录 ",
+            LoginFormIntent::Register => " Privchat 注册 ",
+        };
         let block = Block::default()
             .borders(Borders::ALL)
             .border_style(Style::default().fg(self.theme.accent))
-            .title(" Privchat Login ");
+            .title(title_text);
 
         let inner = block.inner(content_area);
         block.render(content_area, buf);
@@ -284,7 +304,11 @@ impl LoginScreen {
         let inner_layout = Layout::vertical(constraints);
         let areas = inner_layout.split(inner);
 
-        let title = Paragraph::new("Enter username and password to login or register")
+        let hint = match self.intent {
+            LoginFormIntent::Login => "输入用户名和密码登录",
+            LoginFormIntent::Register => "输入用户名和密码注册新账号",
+        };
+        let title = Paragraph::new(hint)
             .style(Style::default().fg(Color::White));
         title.render(areas[0], buf);
 
@@ -301,11 +325,17 @@ impl LoginScreen {
 
         let status = match self.state {
             LoginState::Input => Line::from(vec![
-                Span::styled("Enter: Login / Register", Style::default().fg(Color::DarkGray)),
+                Span::styled(
+                    match self.intent {
+                        LoginFormIntent::Login => "Enter: 登录",
+                        LoginFormIntent::Register => "Enter: 注册",
+                    },
+                    Style::default().fg(Color::DarkGray),
+                ),
                 Span::raw(" | "),
-                Span::styled("Esc: Quit", Style::default().fg(Color::DarkGray)),
+                Span::styled("Esc: 返回", Style::default().fg(Color::DarkGray)),
                 Span::raw(" | "),
-                Span::styled("Alt+D: Clear Saved Token", Style::default().fg(Color::DarkGray)),
+                Span::styled("Alt+D: 清除已存 Token", Style::default().fg(Color::DarkGray)),
             ]),
             LoginState::Validating => Line::from(Span::styled(
                 "Logging in...",

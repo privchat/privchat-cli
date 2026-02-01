@@ -253,10 +253,10 @@ impl DiskImageCache {
 
 /// Returns the default cache directory path.
 fn dirs_cache_path() -> PathBuf {
-    directories::ProjectDirs::from("com", "linuxmobile", "privchat").map_or_else(
+    directories::ProjectDirs::from("io", "privchat", "privchat-cli").map_or_else(
         || {
             std::env::temp_dir()
-                .join("privchat")
+                .join("privchat-cli")
                 .join("cache")
                 .join("images")
         },

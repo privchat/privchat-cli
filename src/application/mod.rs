@@ -7,5 +7,5 @@ pub mod services;
 /// Use case implementations.
 pub mod use_cases;
 
-pub use dto::{LoginRequest, LoginResponse, TokenSource};
+pub use dto::{AuthIntent, LoginRequest, LoginResponse, TokenSource};
 pub use use_cases::{LoginUseCase, ResolveTokenUseCase};

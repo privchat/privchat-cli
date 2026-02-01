@@ -37,16 +37,20 @@ impl LoginUseCase {
         let (user, token) = if request.is_credentials() {
             let username = request.username.as_deref().unwrap_or("");
             let password = request.password.as_deref().unwrap_or("");
-            debug!(username = %username, "Attempting login with credentials");
-            match self.auth_port.login(username, password).await {
-                Ok(ok) => {
-                    info!(username = %username, "Login successful");
-                    ok
-                }
-                Err(e) => {
-                    debug!(error = %e, "Login failed, trying register");
+            let intent = request.intent;
+            debug!(username = %username, ?intent, "Attempting auth with credentials");
+            match intent {
+                Some(crate::application::dto::AuthIntent::Register) => {
+                    info!(username = %username, "Registering");
                     self.auth_port.register(username, password).await.map_err(|e| {
-                        warn!(error = %e, "Register also failed");
+                        warn!(error = %e, "Register failed");
+                        e
+                    })?
+                }
+                Some(crate::application::dto::AuthIntent::Login) | None => {
+                    info!(username = %username, "Logging in");
+                    self.auth_port.login(username, password).await.map_err(|e| {
+                        warn!(error = %e, "Login failed");
                         e
                     })?
                 }

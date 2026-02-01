@@ -11,7 +11,7 @@ use tokio::time::interval;
 use tracing::{debug, error, info, warn};
 use zeroize::Zeroize;
 
-use crate::application::dto::{LoginRequest, TokenSource};
+use crate::application::dto::{AuthIntent, LoginRequest, TokenSource};
 use crate::application::services::markdown_service::MarkdownService;
 use crate::application::services::notification_service::NotificationService;
 use crate::application::use_cases::{LoginUseCase, ResolveTokenUseCase};
@@ -26,7 +26,8 @@ use crate::infrastructure::{ClipboardService, StateStore};
 use crate::presentation::events::EventResult;
 use crate::presentation::theme::Theme;
 use crate::presentation::ui::{
-    ChatKeyResult, ChatScreen, ChatScreenState, LoginAction, LoginScreen, SplashScreen,
+    AuthModeAction, AuthModeScreen, ChatKeyResult, ChatScreen, ChatScreenState, LoginAction,
+    LoginFormIntent, LoginScreen, SplashScreen,
     backend::{Action, Backend, BackendCommand},
 };
 use crate::presentation::widgets::TreeNodeId;
@@ -45,6 +46,8 @@ enum AppState {
 }
 
 enum CurrentScreen {
+    /// 先选「登录」或「注册」，再进入输入框。
+    AuthModeSelect(AuthModeScreen),
     Login(LoginScreen),
     Splash(SplashScreen),
     Chat(Box<ChatScreenState>),
@@ -64,6 +67,8 @@ pub struct AppConfig {
 pub struct App {
     state: AppState,
     screen: CurrentScreen,
+    /// 用户在「登录/注册」选择屏选中的意图；进入 Login 表单后用于提交时区分 login/register。
+    auth_intent: Option<AuthIntent>,
     login_use_case: LoginUseCase,
     resolve_token_use_case: ResolveTokenUseCase,
     command_tx: mpsc::UnboundedSender<BackendCommand>,
@@ -157,7 +162,8 @@ impl App {
 
         Self {
             state: AppState::Login,
-            screen: CurrentScreen::Login(LoginScreen::new().with_theme(config.theme)),
+            screen: CurrentScreen::AuthModeSelect(AuthModeScreen::new().with_theme(config.theme)),
+            auth_intent: None,
             login_use_case,
             resolve_token_use_case,
             command_tx,
@@ -207,6 +213,12 @@ impl App {
         }
 
         if let Some((token, source)) = self.pending_token.take() {
+            self.auth_intent = Some(AuthIntent::Login);
+            self.screen = CurrentScreen::Login(
+                LoginScreen::new()
+                    .with_theme(self.theme)
+                    .with_intent(LoginFormIntent::Login),
+            );
             self.attempt_auto_login(token, source).await;
         }
 
@@ -359,7 +371,7 @@ impl App {
                 state.insert_text(text);
                 EventResult::Continue
             }
-            CurrentScreen::Splash(_) => EventResult::Continue,
+            CurrentScreen::Splash(_) | CurrentScreen::AuthModeSelect(_) => EventResult::Continue,
         }
     }
 
@@ -406,6 +418,9 @@ impl App {
 
     fn render(&mut self, frame: &mut Frame) {
         match &mut self.screen {
+            CurrentScreen::AuthModeSelect(screen) => {
+                frame.render_widget(&*screen, frame.area());
+            }
             CurrentScreen::Login(screen) => {
                 frame.render_widget(&*screen, frame.area());
             }
@@ -465,7 +480,13 @@ impl App {
             );
 
             if is_force_quit {
-                return EventResult::Exit;
+                if let CurrentScreen::AuthModeSelect(_) = &self.screen {
+                    return EventResult::Exit;
+                }
+                if let CurrentScreen::Login(_) = &self.screen {
+                    self.transition_to_auth_mode_select();
+                    return EventResult::Continue;
+                }
             }
         } else if let KeyEvent {
             code: KeyCode::Char('c'),
@@ -477,6 +498,28 @@ impl App {
         }
 
         let result = match &mut self.screen {
+            CurrentScreen::AuthModeSelect(screen) => {
+                match screen.handle_key(key) {
+                    AuthModeAction::SelectLogin => {
+                        self.auth_intent = Some(AuthIntent::Login);
+                        self.screen = CurrentScreen::Login(
+                            LoginScreen::new()
+                                .with_theme(self.theme)
+                                .with_intent(LoginFormIntent::Login),
+                        );
+                    }
+                    AuthModeAction::SelectRegister => {
+                        self.auth_intent = Some(AuthIntent::Register);
+                        self.screen = CurrentScreen::Login(
+                            LoginScreen::new()
+                                .with_theme(self.theme)
+                                .with_intent(LoginFormIntent::Register),
+                        );
+                    }
+                    AuthModeAction::None => {}
+                }
+                return EventResult::Continue;
+            }
             CurrentScreen::Login(screen) => {
                 match screen.handle_key(key) {
                     LoginAction::Submit => self.handle_login_submit(),
@@ -670,7 +713,8 @@ impl App {
             screen.set_validating();
         }
 
-        let request = LoginRequest::with_credentials(username, password, persist);
+        let intent = self.auth_intent.unwrap_or(AuthIntent::Login);
+        let request = LoginRequest::with_credentials(username, password, persist, intent);
         let use_case = self.login_use_case.clone();
         let tx = self.action_tx.clone();
 
@@ -1200,6 +1244,7 @@ impl App {
                 } else if let CurrentScreen::Login(screen) = &mut self.screen {
                     screen.paste_into_focused(&text);
                 }
+                // AuthModeSelect 不处理粘贴
             }
         }
     }
@@ -1216,9 +1261,16 @@ impl App {
         self.token_source = None;
         self.current_user_id = None;
         self.pending_chat_state = None;
+        self.auth_intent = None;
         self.typing_manager = TypingIndicatorManager::new();
         self.user_cache.clear();
-        self.screen = CurrentScreen::Login(LoginScreen::new().with_theme(self.theme));
+        self.screen = CurrentScreen::AuthModeSelect(AuthModeScreen::new().with_theme(self.theme));
+    }
+
+    /// 仅从登录表单返回到「登录/注册」选择屏，不断开连接、不清理 token。
+    fn transition_to_auth_mode_select(&mut self) {
+        self.auth_intent = None;
+        self.screen = CurrentScreen::AuthModeSelect(AuthModeScreen::new().with_theme(self.theme));
     }
 
     fn handle_login_error(&mut self, error: &AuthError) {

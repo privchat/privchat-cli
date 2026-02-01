@@ -2,4 +2,4 @@
 
 mod auth_dto;
 
-pub use auth_dto::{LoginRequest, LoginResponse, TokenSource};
+pub use auth_dto::{AuthIntent, LoginRequest, LoginResponse, TokenSource};

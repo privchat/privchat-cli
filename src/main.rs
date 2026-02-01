@@ -67,7 +67,7 @@ fn create_app() -> Result<(App, Option<(String, TokenSource)>)> {
     let data_dir = std::env::var("PRIVCHAT_DATA_DIR")
         .map(PathBuf::from)
         .unwrap_or_else(|_| {
-            directories::ProjectDirs::from("com", "ayn2op", "privchat")
+            directories::ProjectDirs::from("io", "privchat", "privchat-cli")
                 .map(|d| d.data_dir().to_path_buf())
                 .unwrap_or_else(|| PathBuf::from("./data"))
         });

@@ -8,7 +8,7 @@ use crate::domain::entities::AuthToken;
 use crate::domain::errors::{AuthError, SecretError};
 use crate::domain::ports::TokenStoragePort;
 
-const KEYRING_SERVICE: &str = "privchat";
+const KEYRING_SERVICE: &str = "io.privchat.privchat-cli";
 const KEYRING_USER: &str = "default";
 
 /// System keyring token storage adapter.

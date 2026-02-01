@@ -34,6 +34,13 @@ impl std::fmt::Display for TokenSource {
     }
 }
 
+/// 用户名+密码时的意图：仅登录 或 仅注册（由用户在「登录/注册」选择屏选定）。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AuthIntent {
+    Login,
+    Register,
+}
+
 /// Login request data（支持「已有 token」或「用户名+密码」两种方式）。
 #[derive(Debug, Clone)]
 pub struct LoginRequest {
@@ -47,6 +54,8 @@ pub struct LoginRequest {
     pub source: TokenSource,
     /// 是否持久化 token（登录/注册得到的 token 或用户输入的 token）。
     pub persist_token: bool,
+    /// 用户名+密码时的意图：仅登录 或 仅注册；None 时兼容旧逻辑（先 login 失败再 register）。
+    pub intent: Option<AuthIntent>,
 }
 
 impl LoginRequest {
@@ -59,25 +68,39 @@ impl LoginRequest {
             password: None,
             source,
             persist_token: true,
+            intent: None,
         }
     }
 
-    /// 使用用户名+密码的登录请求（先尝试 login，失败则 register）。
+    /// 使用用户名+密码的登录请求；intent 决定仅登录或仅注册。
     #[must_use]
-    pub fn with_credentials(username: String, password: String, persist_token: bool) -> Self {
+    pub fn with_credentials(
+        username: String,
+        password: String,
+        persist_token: bool,
+        intent: AuthIntent,
+    ) -> Self {
         Self {
             token: None,
             username: Some(username),
             password: Some(password),
             source: TokenSource::UserInput,
             persist_token,
+            intent: Some(intent),
         }
     }
 
     /// 兼容旧调用：new(token, source) 等价 with_token。
     #[must_use]
     pub fn new(token: String, source: TokenSource) -> Self {
-        Self::with_token(token, source)
+        Self {
+            token: Some(token),
+            username: None,
+            password: None,
+            source,
+            persist_token: true,
+            intent: None,
+        }
     }
 
     /// 禁用 token 持久化。

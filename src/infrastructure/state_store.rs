@@ -28,7 +28,7 @@ impl StateStore {
     /// and a warning will be logged.
     #[must_use]
     pub fn new() -> Self {
-        if let Some(proj_dirs) = ProjectDirs::from("com", "linuxmobile", "privchat") {
+        if let Some(proj_dirs) = ProjectDirs::from("io", "privchat", "privchat-cli") {
             let config_dir = proj_dirs.config_dir();
             let config_path = config_dir.join("state.toml");
             Self {

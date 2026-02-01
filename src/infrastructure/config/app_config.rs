@@ -5,9 +5,9 @@ use directories::ProjectDirs;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
-const APP_NAME: &str = "privchat";
-const APP_QUALIFIER: &str = "com";
-const APP_ORGANIZATION: &str = "ayn2op";
+const APP_NAME: &str = "privchat-cli";
+const APP_QUALIFIER: &str = "io";
+const APP_ORGANIZATION: &str = "privchat";
 
 /// Log level configuration.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, clap::ValueEnum)]

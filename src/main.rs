@@ -71,7 +71,7 @@ fn create_app() -> Result<(App, Option<(String, TokenSource)>)> {
                 .map(|d| d.data_dir().to_path_buf())
                 .unwrap_or_else(|| PathBuf::from("./data"))
         });
-    let server_url = std::env::var("PRIVCHAT_SERVER_URL").unwrap_or_else(|_| "quic://127.0.0.1:8082".to_string());
+    let server_url = std::env::var("PRIVCHAT_SERVER_URL").unwrap_or_else(|_| "quic://127.0.0.1:9001".to_string());
     let privchat = Arc::new(PrivchatService::new(data_dir.clone(), server_url));
 
     let token_storage = Arc::new(FileTokenStorage::new(data_dir));

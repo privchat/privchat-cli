@@ -63,7 +63,7 @@ arboard = { version = "3.6.1", features = ["wayland-data-control", "image-data"]
 notify-rust = "4"
 
 # Privchat SDK（协议层替换）
-privchat-sdk = { path = "../privchat-sdk/crates/privchat-sdk" }
+privchat-sdk-ffi = { path = "../privchat-sdk/crates/privchat-sdk-ffi" }
 
 # Image rendering - Platform Specific
 

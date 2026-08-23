@@ -16,10 +16,10 @@ use crate::application::services::markdown_service::MarkdownService;
 use crate::application::services::notification_service::NotificationService;
 use crate::application::use_cases::{LoginUseCase, ResolveTokenUseCase};
 use crate::domain::ConnectionStatus;
-use crate::domain::entities::{AuthToken, Channel, ChannelId, GuildId, MessageId, UserCache};
+use crate::domain::entities::{AuthToken, ChannelId, GuildId, MessageId, UserCache};
 use crate::domain::errors::AuthError;
 use crate::domain::ports::{AuthPort, ChatDataPort, EventStreamPort, TokenStoragePort};
-use crate::domain::{ChannelListEntry, SDKEvent, TimelineMessage};
+use crate::domain::{SDKEvent, TimelineMessage};
 use crate::presentation::typing::TypingIndicatorManager;
 use crate::infrastructure::image::{ImageLoadedEvent, ImageLoader};
 use crate::infrastructure::{ClipboardService, StateStore};
@@ -103,7 +103,9 @@ pub struct App {
     state_save_tx: mpsc::UnboundedSender<(Option<u64>, Option<u64>)>,
     clipboard_service: ClipboardService,
     notification: Option<(String, std::time::Instant)>,
+    #[allow(dead_code)]
     notification_service: NotificationService,
+    #[allow(dead_code)]
     last_desktop_notification: Option<Instant>,
 }
 
@@ -833,38 +835,17 @@ impl App {
     }
 
     fn handle_sdk_event(&mut self, event: SDKEvent) {
-        use privchat_sdk::events::{ConnectionState as ConnState, TimelineDiffKind, SDKEvent as PSE};
+        use privchat_sdk_ffi::{ConnectionState as ConnState, SdkEvent as PSE};
         match &event {
-            PSE::ConnectionStateChanged { new_state, .. } => {
-                let status = match new_state {
-                    ConnState::Connected => ConnectionStatus::Connected,
-                    ConnState::Connecting | ConnState::Reconnecting => ConnectionStatus::Connecting,
+            PSE::ConnectionStateChanged { to, .. } => {
+                let status = match to {
+                    ConnState::Connected | ConnState::LoggedIn | ConnState::Authenticated => {
+                        ConnectionStatus::Connected
+                    }
+                    ConnState::New => ConnectionStatus::Connecting,
                     _ => ConnectionStatus::Disconnected,
                 };
                 self.set_connection_status(status);
-            }
-            PSE::MessageReceived { .. } => {
-                // 不构造消息、不赋值 id；只通过 TimelineDiff::Append 的 TimelineMessage（id 由 SDK 提供）追加
-            }
-            PSE::TimelineDiff { diff_kind, .. } => {
-                if let TimelineDiffKind::Append { messages } = diff_kind {
-                    for msg in messages {
-                        self.handle_privchat_message_received(msg.clone());
-                    }
-                }
-            }
-            PSE::TypingIndicator(typing_event) => {
-                self.handle_typing_start(
-                    ChannelId(typing_event.channel_id),
-                    typing_event.user_id.to_string(),
-                    None,
-                );
-            }
-            PSE::ChannelListUpdate { .. } => {
-                // 服务端推送新会话或 SDK 同步会话列表后需刷新 UI 会话列表
-                info!("SDK ChannelListUpdate 收到，触发会话列表刷新");
-                let _ = self.command_tx.send(BackendCommand::RefreshChannelList);
-                self.should_render = true;
             }
             _ => {}
         }
@@ -882,6 +863,7 @@ impl App {
         self.update_typing_indicator(channel_id_domain);
     }
 
+    #[allow(dead_code)]
     fn handle_message_create(&mut self, message: crate::domain::entities::Message) {
         let channel_id = message.channel_id();
         let user_id = message.author().id().to_string();
@@ -966,6 +948,7 @@ impl App {
         self.update_typing_indicator(channel_id);
     }
 
+    #[allow(dead_code)]
     fn cache_users_from_message(&self, message: &crate::domain::entities::Message) {
         let author = message.author();
         self.user_cache
@@ -982,6 +965,7 @@ impl App {
         }
     }
 
+    #[allow(dead_code)]
     fn handle_message_update(&mut self, message: crate::domain::entities::Message) {
         debug!(message_id = %message.id(), "Message updated");
         if let CurrentScreen::Chat(ref mut state) = self.screen {
@@ -1294,8 +1278,8 @@ impl App {
     fn handle_send_message(
         &mut self,
         content: String,
-        reply_to: Option<crate::domain::entities::MessageId>,
-        attachments: Vec<std::path::PathBuf>,
+        _reply_to: Option<crate::domain::entities::MessageId>,
+        _attachments: Vec<std::path::PathBuf>,
     ) {
         let channel_id = if let CurrentScreen::Chat(ref state) = self.screen {
             state

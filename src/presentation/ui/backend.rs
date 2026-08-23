@@ -4,7 +4,7 @@ use std::sync::Arc;
 use tokio::sync::mpsc;
 use tracing::{debug, error, info, warn};
 
-use crate::domain::entities::{AuthToken, Message, MessageId, User};
+use crate::domain::entities::User;
 use crate::domain::ports::ChatDataPort;
 use crate::domain::{ChannelListEntry, TimelineMessage};
 use crate::infrastructure::image::ImageLoader;

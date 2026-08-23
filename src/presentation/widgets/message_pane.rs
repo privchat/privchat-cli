@@ -10,7 +10,7 @@ use crate::domain::entities::{
 };
 use crate::domain::keybinding::Action;
 use crate::domain::TimelineMessage;
-use chrono::{DateTime, Local, TimeZone};
+use chrono::{DateTime, Local};
 
 use crate::presentation::commands::CommandRegistry;
 

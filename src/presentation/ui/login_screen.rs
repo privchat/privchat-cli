@@ -25,6 +25,7 @@ pub enum LoginState {
 pub enum LoginFocus {
     Username,
     Password,
+    #[allow(dead_code)]
     PersistCheckbox,
 }
 

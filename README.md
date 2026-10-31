@@ -49,6 +49,8 @@ cargo build --release
 ./target/release/privchat
 ```
 
+本仓库使用同级源码依赖：构建前需在父目录准备 `privchat-sdk`、`privchat-protocol` 和 `msgtrans` 仓库。当前适配的 SDK 基线为 `1.0.0-beta.1`（提交 `bcb9884`，含 rxing 0.9.3 兼容修复）。第三方依赖版本由 `Cargo.lock` 固定，使用 `cargo build --locked` 和 `cargo test --locked` 验证。
+
 **可选依赖（按平台）**：
 
 - **Debian/Ubuntu:** `pkg-config libdbus-1-dev libchafa-dev libglib2.0-dev mold clang`
@@ -64,6 +66,7 @@ cargo build --release
 | `PRIVCHAT_DATA_DIR` | 数据目录（用户 DB、KV、队列） | `com.netonstream.privchat.privchat-cli` 对应 data_dir 或 `./data` |
 | `PRIVCHAT_ASSETS_DIR` | 含 SQL 迁移的 assets 目录 | 当前目录下 `assets` 或 `privchat-cli/assets` |
 | `PRIVCHAT_TOKEN` | 已有 Token 时可直接使用（可选） | — |
+| `PRIVCHAT_SPKI_PINS` | 服务端 SPKI pin（base64 SHA-256），多个值用逗号分隔；正式 TLS/QUIC 连接必须配置 | — |
 
 持久化配置使用应用 ID `com.netonstream.privchat.privchat-cli` 对应目录（如 Linux 下 `~/.config/privchat-cli/config.toml`），未来 GUI 版可使用 `com.netonstream.privchat.privchat` 独立目录。
 

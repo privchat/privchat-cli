@@ -89,7 +89,7 @@ impl ImageAttachment {
     pub fn height(&self, width: u16) -> u16 {
         if let Some(protocol) = &self.protocol {
             let area = Rect::new(0, 0, width, MAX_IMAGE_HEIGHT);
-            return protocol.size_for(Resize::Fit(None), area).height;
+            return protocol.size_for(Resize::Fit(None), area.into()).height;
         } else if self.image.is_some() || self.status.is_loading() {
             return 3;
         }
@@ -100,7 +100,7 @@ impl ImageAttachment {
     pub fn width(&self, width: u16) -> u16 {
         if let Some(protocol) = &self.protocol {
             let area = Rect::new(0, 0, width, MAX_IMAGE_HEIGHT);
-            return protocol.size_for(Resize::Fit(None), area).width;
+            return protocol.size_for(Resize::Fit(None), area.into()).width;
         }
         0
     }

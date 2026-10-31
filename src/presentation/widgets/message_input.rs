@@ -173,7 +173,7 @@ impl MessageInputState<'_> {
     }
 
     pub fn get_cursor_index(&self) -> usize {
-        let (row, col) = self.textarea.cursor();
+        let tui_textarea::DataCursor(row, col) = self.textarea.cursor();
         let lines = self.textarea.lines();
         let mut index = 0;
         for i in 0..row {
@@ -370,7 +370,7 @@ impl MessageInputState<'_> {
             return;
         }
 
-        let (_, cursor_col) = self.textarea.cursor();
+        let tui_textarea::DataCursor(_, cursor_col) = self.textarea.cursor();
 
         if cursor_col >= self.scroll_offset + width {
             self.scroll_offset = cursor_col - width + 1;
@@ -395,7 +395,7 @@ impl MessageInputState<'_> {
             Style::default().fg(Color::White)
         };
 
-        let (cursor_row, _) = self.textarea.cursor();
+        let tui_textarea::DataCursor(cursor_row, _) = self.textarea.cursor();
 
         let lines: Vec<&str> = display_content.lines().collect();
         for (i, line) in lines.iter().enumerate() {

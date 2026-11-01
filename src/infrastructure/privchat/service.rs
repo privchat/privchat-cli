@@ -21,6 +21,39 @@ use privchat_sdk_ffi::{
 /// 本机持久化 device_id 文件名（与 login/register/authenticate 共用，服务端要求同机同 device_id）。
 const DEVICE_ID_FILE: &str = "device_id";
 
+/// Device-id contract: a random UUID v4 (RFC 4122 variant), lowercase hyphenated.
+/// The servers reject anything else (uppercase, unhyphenated, v1/v5, free-form strings).
+fn is_canonical_device_id(value: &str) -> bool {
+    match uuid::Uuid::parse_str(value) {
+        Ok(id) => {
+            id.get_version_num() == 4
+                && id.get_variant() == uuid::Variant::RFC4122
+                && id.hyphenated().to_string() == value
+        }
+        Err(_) => false,
+    }
+}
+
+/// Reuse the persisted device id when it is a canonical v4; otherwise generate a fresh
+/// random v4 once and persist it so every later login/register/connect reuses it.
+fn load_or_create_device_id(data_dir: &Path) -> Result<String, AuthError> {
+    let path = data_dir.join(DEVICE_ID_FILE);
+    if path.exists() {
+        let s = std::fs::read_to_string(&path)
+            .map_err(|e| AuthError::rejected(format!("读取 device_id 失败: {}", e)))?;
+        let s = s.trim();
+        if is_canonical_device_id(s) {
+            return Ok(s.to_string());
+        }
+    }
+    std::fs::create_dir_all(data_dir)
+        .map_err(|e| AuthError::rejected(format!("创建数据目录失败: {}", e)))?;
+    let device_id = uuid::Uuid::new_v4().to_string();
+    std::fs::write(&path, &device_id)
+        .map_err(|e| AuthError::rejected(format!("写入 device_id 失败: {}", e)))?;
+    Ok(device_id)
+}
+
 /// Privchat 协议适配：透传 SDK，不做 DTO 转换。
 pub struct PrivchatService {
     /// 数据目录（用于初始化 SDK）
@@ -105,21 +138,7 @@ impl PrivchatService {
 
     /// 本机持久化 device_id：首次运行生成并写入 data_dir/device_id，之后复用，保证与服务端校验一致。
     fn get_or_create_device_id(&self) -> Result<String, AuthError> {
-        let path = self.data_dir.join(DEVICE_ID_FILE);
-        if path.exists() {
-            let s = std::fs::read_to_string(&path)
-                .map_err(|e| AuthError::rejected(format!("读取 device_id 失败: {}", e)))?;
-            let s = s.trim();
-            if uuid::Uuid::parse_str(s).is_ok() {
-                return Ok(s.to_string());
-            }
-        }
-        std::fs::create_dir_all(&self.data_dir)
-            .map_err(|e| AuthError::rejected(format!("创建数据目录失败: {}", e)))?;
-        let device_id = uuid::Uuid::new_v4().to_string();
-        std::fs::write(&path, &device_id)
-            .map_err(|e| AuthError::rejected(format!("写入 device_id 失败: {}", e)))?;
-        Ok(device_id)
+        load_or_create_device_id(&self.data_dir)
     }
 
     async fn resolve_channel_type(sdk: &PrivchatClient, channel_id: u64) -> Result<i32, AuthError> {
@@ -451,4 +470,36 @@ fn parse_server_url(url: &str) -> Result<Vec<ServerEndpoint>, AuthError> {
         use_tls,
     };
     Ok(vec![endpoint])
+}
+
+#[cfg(test)]
+mod device_id_tests {
+    use super::*;
+
+    #[test]
+    fn canonical_device_id_accepts_only_lowercase_v4() {
+        let v4 = uuid::Uuid::new_v4().to_string();
+        assert!(is_canonical_device_id(&v4));
+        assert!(!is_canonical_device_id(&v4.to_uppercase()));
+        assert!(!is_canonical_device_id(&v4.replace('-', "")));
+        assert!(!is_canonical_device_id(""));
+        assert!(!is_canonical_device_id("dev-1"));
+        assert!(!is_canonical_device_id("6ba7b810-9dad-11d1-80b4-00c04fd430c8"));
+    }
+
+    #[test]
+    fn persisted_device_id_is_reused_and_invalid_one_replaced() {
+        let dir = std::env::temp_dir().join(format!("privchat-cli-devid-{}", uuid::Uuid::new_v4()));
+        let first = load_or_create_device_id(&dir).unwrap();
+        assert!(is_canonical_device_id(&first));
+        assert_eq!(load_or_create_device_id(&dir).unwrap(), first);
+
+        let upper = first.to_uppercase();
+        std::fs::write(dir.join(DEVICE_ID_FILE), &upper).unwrap();
+        let replaced = load_or_create_device_id(&dir).unwrap();
+        assert!(is_canonical_device_id(&replaced));
+        assert_ne!(replaced, upper);
+        assert_eq!(load_or_create_device_id(&dir).unwrap(), replaced);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 }
